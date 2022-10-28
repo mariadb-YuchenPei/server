@@ -25,6 +25,7 @@
 #include "item_strfunc.h"      // Item_str_func
 #include "item_sum.h"
 #include "sql_type_json.h"
+#include "json_schema.h"
 
 class json_path_with_flags
 {
@@ -789,6 +790,53 @@ public:
   longlong val_int() override;
   Item *get_copy(THD *thd) override
   { return get_item_copy<Item_func_json_overlaps>(thd, this); }
+};
+
+class Item_func_json_schema_valid: public Item_bool_func
+{
+  String tmp_js;
+  bool a2_constant, a2_parsed, schema_validated;
+  String tmp_val, *val;
+  Json_schema *schema;
+  List<Json_schema> schema_list;
+  List<HASH> hash_list;
+
+public:
+  Item_func_json_schema_valid(THD *thd, Item *a, Item *b):
+    Item_bool_func(thd, a, b) { hash_list.empty(); schema_validated= false; schema= NULL; schema_list.empty();}
+  LEX_CSTRING func_name_cstring() const override
+  {
+    static LEX_CSTRING name= {STRING_WITH_LEN("json_schema_valid") };
+    return name;
+  }
+  bool fix_length_and_dec(THD *thd) override;
+  longlong val_int() override;
+  Item *get_copy(THD *thd) override
+  { return get_item_copy<Item_func_json_schema_valid>(thd, this); }
+  void cleanup()
+  {
+    DBUG_ENTER("Item_func_json_schema_valid::cleanup");
+    Item_bool_func::cleanup();
+
+    List_iterator<HASH> it(hash_list);
+    HASH *curr_hash;
+    while ((curr_hash= it++))
+    {
+      if (my_hash_inited(curr_hash))
+       my_hash_free(curr_hash);
+    }
+    hash_list.empty();
+
+    List_iterator<Json_schema> it2(schema_list);
+    Json_schema *curr_schema;
+    while ((curr_schema= it2++))
+    {
+      delete curr_schema;
+      curr_schema= nullptr;
+    }
+    schema_list.empty();
+    DBUG_VOID_RETURN;
+  }
 };
 
 #endif /* ITEM_JSONFUNC_INCLUDED */

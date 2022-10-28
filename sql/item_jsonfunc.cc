@@ -19,21 +19,7 @@
 #include "sql_class.h"
 #include "item.h"
 #include "sql_parse.h" // For check_stack_overrun
-
-/*
-  Allocating memory and *also* using it (reading and
-  writing from it) because some build instructions cause
-  compiler to optimize out stack_used_up. Since alloca()
-  here depends on stack_used_up, it doesnt get executed
-  correctly and causes json_debug_nonembedded to fail
-  ( --error ER_STACK_OVERRUN_NEED_MORE does not occur).
-*/
-#define ALLOCATE_MEM_ON_STACK(A) do \
-                              { \
-                                uchar *array= (uchar*)alloca(A); \
-                                bzero(array, A); \
-                                my_checksum(0, array, A); \
-                              } while(0)
+#include "json_schema_helper.cc"
 
 /*
   Compare ASCII string against the string with the specified
@@ -4708,4 +4694,128 @@ bool Item_func_json_overlaps::fix_length_and_dec(THD *thd)
   set_maybe_null();
 
   return Item_bool_func::fix_length_and_dec(thd);
+}
+
+longlong Item_func_json_schema_valid::val_int()
+{
+  json_engine_t ve;
+  int is_valid= 1;
+
+  if (!schema_validated)
+    return 0;
+
+  if (!a2_parsed)
+  {
+    val= args[1]->val_json(&tmp_val);
+    a2_parsed= a2_constant;
+  }
+
+  if (val == 0)
+  {
+    null_value= 1;
+    return 0;
+  }
+
+  json_scan_start(&ve, val->charset(), (const uchar *) val->ptr(),
+                  (const uchar *) val->end());
+
+  if (json_read_value(&ve))
+    is_valid= false;
+
+  if (is_valid && (schema->type == JSON_VALUE_UNINITIALIZED ||
+      schema->validate_json_for_common_constraint(&ve) ||
+      schema->validate_type_specific_constraint(&ve)))
+    is_valid= 0;
+
+  if (unlikely(ve.s.error))
+  {
+    is_valid= 0;
+    report_json_error(val, &ve, 1);
+  }
+
+  return is_valid;
+}
+
+/*
+Idea behind implementation:
+JSON schema basically has same structure as that of json object, consisting of
+key-value pairs. So it can be parsed in the same manner as any json object.
+
+Json schema of any type has some common validation keywords
+(type, enum, const and annotation keyword).
+So all these common key words can be put into one class Json_schema and json
+schemas with specific type can be derived from this class
+(like Json_schema_number, Json_schema_string, Json_schema_array and Json_schema_object).
+Objects of appropriate type can be constructed based on the "type" keyword.
+
+The catch is, all the keywords, including "type" can be mention in any order
+for a schema. So getting knowing value of "type" keyword is important.
+For more simpler types like number, string, array, boolean and null it is
+simple, because the schema is not nested. We can find the "type" keyword first,
+then copy the entire schema again (which wont really be as long) and process the rest
+of the keywords. Copying is required only once.
+However, for objects, this can become complicated because there could be multiple
+properties for an object, with its own schema and possibily nesting. In such case
+it would require copying back and forth at least once for each nested property/object.
+
+To avoid repeatedly copying back and forth, following is done ( which is applicable to
+all schema types):
+Copy the schema into a temporary json_engine_t structure so that the schema is not
+exhausted in step (1).
+1) Get the type information (stored in st_json_schema_type)
+2) Use the information from the above ^ structure to create
+   appropriate objects and schema stored in temporary schema to resolve other
+   keywords.
+This way, we will end up copying the entire schema only once (before step 1).
+*/
+bool Item_func_json_schema_valid::fix_length_and_dec(THD *thd)
+{
+  json_engine_t je, temp_je;
+  bool res= 0;
+  st_json_schema_type_info type_info;
+  List<HASH>type_info_hash_list;
+  type_info.key_name= NULL;
+  type_info.has_properties= false;
+
+  type_info_hash_list.empty();
+
+  a2_constant= args[1]->const_item();
+  a2_parsed= FALSE;
+
+  String *js= args[0]->val_json(&tmp_js);
+
+  if ((null_value= args[0]->null_value))
+    return 0;
+  json_scan_start(&je, js->charset(), (const uchar *) js->ptr(),
+                  (const uchar *) js->ptr() + js->length());
+  temp_je= je;
+
+  if (get_type_info_for_schema(&type_info, &temp_je, &type_info_hash_list, true))
+    goto error;
+
+  if (!res)
+  {
+    schema= create_object_and_handle_keywords(thd, &type_info, &je, schema,
+                                              &hash_list, &type_info_hash_list, &schema_list);
+    if (!schema)
+      goto error;
+    schema_validated= true;
+  }
+
+  error:
+  if (temp_je.s.error)
+    report_json_error(js, &temp_je, 1);
+  if (je.s.error)
+    report_json_error(js, &je, 1);
+
+  List_iterator<HASH> it(type_info_hash_list);
+  HASH *curr_hash;
+  while ((curr_hash= it++))
+  {
+    if (my_hash_inited(curr_hash))
+       my_hash_free(curr_hash);
+  }
+  type_info_hash_list.empty();
+
+  return res || Item_bool_func::fix_length_and_dec(thd);
 }
