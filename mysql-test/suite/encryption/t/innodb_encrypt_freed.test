@@ -11,10 +11,11 @@ CREATE TABLE t1(f1 BIGINT PRIMARY KEY, f2 int not null,
 		f3 int not null, index(f1), index idx_1(f2),
 		index(f2, f3)) ENGINE=InnoDB;
 --let $tables_count= `select count(*) + 1 from information_schema.tables where engine = 'InnoDB'`
+--let $undo_spaces_count=`select @@global.innodb_undo_tablespaces`
 
 --echo # Wait max 10 min for key encryption threads to encrypt all spaces
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 --source include/wait_condition.inc
 --sorted_result
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
@@ -35,7 +36,7 @@ set global innodb_encrypt_tables = OFF;
 
 --echo # Wait max 10 min for key encryption threads to decrypt all spaces
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
 --source include/wait_condition.inc
 --sorted_result
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
@@ -47,7 +48,7 @@ set global innodb_encrypt_tables = ON;
 
 --echo # Wait max 10 min for key encryption threads to encrypt all spaces
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 --source include/wait_condition.inc
 --sorted_result
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
@@ -67,7 +68,7 @@ CREATE TABLE t1(f1 BIGINT PRIMARY KEY, f2 int not null,
 
 --echo # Wait max 10 min for key encryption threads to encrypt all spaces
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 --source include/wait_condition.inc
 --sorted_result
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
@@ -87,7 +88,7 @@ set global innodb_encrypt_tables = OFF;
 
 --echo # Wait max 10 min for key encryption threads to decrypt all spaces
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
 --source include/wait_condition.inc
 --sorted_result
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
@@ -108,7 +109,7 @@ set global innodb_encrypt_tables = ON;
 
 --echo # Wait max 10 min for key encryption threads to encrypt all spaces
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 --source include/wait_condition.inc
 --sorted_result
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;

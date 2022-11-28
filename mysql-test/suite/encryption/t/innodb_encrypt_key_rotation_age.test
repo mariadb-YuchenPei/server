@@ -21,8 +21,9 @@ let $restart_parameters= --innodb_encryption_threads=5 --innodb_encryption_rotat
 --echo # Wait until encryption threads have encrypted all tablespaces
 
 --let $tables_count= `select count(*) + 1 from information_schema.tables where engine = 'InnoDB'`
+--let $undo_spaces_count=`select @@global.innodb_undo_tablespaces`
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 --source include/wait_condition.inc
 
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
@@ -41,7 +42,7 @@ create table t4 (f1 int not null)engine=innodb encrypted=NO;
 
 --let $tables_count= `select count(*) from information_schema.tables where engine = 'InnoDB'`
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 --source include/wait_condition.inc
 
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
@@ -56,7 +57,7 @@ set global innodb_encrypt_tables = OFF;
 
 --let $tables_count= `select count(*) from information_schema.tables where engine = 'InnoDB'`
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0 AND ROTATING_OR_FLUSHING = 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0 AND ROTATING_OR_FLUSHING = 0;
 --source include/wait_condition.inc
 
 --sorted_result
@@ -71,7 +72,7 @@ set global innodb_encrypt_tables = ON;
 
 --let $tables_count= `select count(*) from information_schema.tables where engine = 'InnoDB'`
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) >= $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
+--let $wait_condition=SELECT COUNT(*) >= $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 --source include/wait_condition.inc
 
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;

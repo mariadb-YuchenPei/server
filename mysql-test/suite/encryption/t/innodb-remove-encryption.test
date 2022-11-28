@@ -22,10 +22,10 @@ create table t1(a int not null primary key, b char(200)) engine=innodb;
 -- source include/restart_mysqld.inc
 
 --echo # Wait until encryption threads have encrypted all tablespaces
-
+--let $undo_spaces_count=`select @@global.innodb_undo_tablespaces`
 --let $tables_count= `select count(*) from information_schema.tables where engine = 'InnoDB'`
 --let $wait_timeout= 600
---let $wait_condition=SELECT COUNT(*) = $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0 AND ROTATING_OR_FLUSHING = 0;
+--let $wait_condition=SELECT COUNT(*) = $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0 AND ROTATING_OR_FLUSHING = 0;
 --source include/wait_condition.inc
 
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
@@ -39,7 +39,7 @@ SELECT * from t1;
 --echo # Now turn off encryption and wait for threads to decrypt all tablespaces
 SET GLOBAL innodb_encrypt_tables = off;
 
---let $wait_condition=SELECT COUNT(*) = $tables_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0 AND ROTATING_OR_FLUSHING = 0;
+--let $wait_condition=SELECT COUNT(*) = $tables_count + $undo_spaces_count FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0 AND ROTATING_OR_FLUSHING = 0;
 --source include/wait_condition.inc
 
 --sorted_result

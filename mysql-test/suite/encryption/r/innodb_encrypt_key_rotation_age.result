@@ -11,6 +11,9 @@ SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_
 NAME
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 NAME
+NULL
+NULL
+NULL
 innodb_system
 mysql/innodb_index_stats
 mysql/innodb_table_stats
@@ -26,6 +29,9 @@ NAME
 test/t4
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 NAME
+NULL
+NULL
+NULL
 innodb_system
 mysql/innodb_index_stats
 mysql/innodb_table_stats
@@ -38,6 +44,9 @@ set global innodb_encrypt_tables = OFF;
 # Wait until encryption threads to decrypt all unencrypted tablespaces
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION = 0;
 NAME
+NULL
+NULL
+NULL
 innodb_system
 mysql/innodb_index_stats
 mysql/innodb_table_stats
@@ -58,6 +67,9 @@ test/t4
 # Display only unencrypted create tables (t4)
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 NAME
+NULL
+NULL
+NULL
 innodb_system
 mysql/innodb_index_stats
 mysql/innodb_table_stats
@@ -70,6 +82,9 @@ NAME
 test/t4
 SELECT NAME FROM INFORMATION_SCHEMA.INNODB_TABLESPACES_ENCRYPTION WHERE MIN_KEY_VERSION <> 0;
 NAME
+NULL
+NULL
+NULL
 innodb_system
 mysql/innodb_index_stats
 mysql/innodb_table_stats
