@@ -1999,7 +1999,7 @@ dict_index_add_to_cache(
 	ut_ad(index->n_def == index->n_fields);
 	ut_ad(index->magic_n == DICT_INDEX_MAGIC_N);
 	ut_ad(!dict_index_is_online_ddl(index));
-	ut_ad(!dict_index_is_ibuf(index));
+	ut_ad(!index->is_ibuf());
 
 	ut_d(mem_heap_validate(index->heap));
 	ut_a(!dict_index_is_clust(index)
@@ -2381,15 +2381,9 @@ dict_index_copy_types(
 	ulint			n_fields)	/*!< in: number of
 						field types to copy */
 {
-	ulint		i;
+	ut_ad(!index->is_ibuf());
 
-	if (dict_index_is_ibuf(index)) {
-		dtuple_set_types_binary(tuple, n_fields);
-
-		return;
-	}
-
-	for (i = 0; i < n_fields; i++) {
+	for (ulint i = 0; i < n_fields; i++) {
 		const dict_field_t*	ifield;
 		dtype_t*		dfield_type;
 
@@ -2628,17 +2622,15 @@ dict_index_build_internal_non_clust(
 	ulint		i;
 	ibool*		indexed;
 
-	ut_ad(table && index);
-	ut_ad(!dict_index_is_clust(index));
-	ut_ad(!dict_index_is_ibuf(index));
+	ut_ad(!index->is_primary());
+	ut_ad(!index->is_ibuf());
 	ut_ad(dict_sys.locked());
 
 	/* The clustered index should be the first in the list of indexes */
 	clust_index = UT_LIST_GET_FIRST(table->indexes);
 
 	ut_ad(clust_index);
-	ut_ad(dict_index_is_clust(clust_index));
-	ut_ad(!dict_index_is_ibuf(clust_index));
+	ut_ad(clust_index->is_clust());
 
 	/* Create a new index */
 	new_index = dict_mem_index_create(
@@ -3771,7 +3763,7 @@ dict_index_build_node_ptr(
 	byte*		buf;
 	ulint		n_unique;
 
-	if (dict_index_is_ibuf(index)) {
+	if (index->is_ibuf()) {
 		/* In a universal index tree, we take the whole record as
 		the node pointer if the record is on the leaf level,
 		on non-leaf levels we remove the last field, which

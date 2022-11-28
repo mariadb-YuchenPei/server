@@ -589,11 +589,6 @@ void srv_monitor_task(void*);
 void srv_master_callback(void*);
 
 
-/**
-Complete the shutdown tasks such as background DROP TABLE,
-and optionally change buffer merge (on innodb_fast_shutdown=0). */
-void srv_shutdown(bool ibuf_merge);
-
 } /* extern "C" */
 
 #ifdef UNIV_DEBUG

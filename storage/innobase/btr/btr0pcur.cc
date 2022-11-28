@@ -476,8 +476,7 @@ btr_pcur_move_to_next_page(
 
 	dberr_t err;
 	buf_block_t* next_block = btr_block_get(
-		*cursor->index(), next_page_no, mode,
-		page_is_leaf(page), mtr, &err);
+		*cursor->index(), next_page_no, mode, mtr, &err);
 
 	if (UNIV_UNLIKELY(!next_block)) {
 		return err;

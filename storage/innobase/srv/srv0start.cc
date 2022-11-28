@@ -69,7 +69,6 @@ Created 2/16/1996 Heikki Tuuri
 #include "btr0btr.h"
 #include "btr0cur.h"
 #include "rem0rec.h"
-#include "ibuf0ibuf.h"
 #include "srv0start.h"
 #include "srv0srv.h"
 #include "btr0defragment.h"
@@ -1134,10 +1133,6 @@ dberr_t srv_start(bool create_new_db)
 	ib::info() << "!!!!!!!! UNIV_DEBUG switched on !!!!!!!!!";
 #endif
 
-#ifdef UNIV_IBUF_DEBUG
-	ib::info() << "!!!!!!!! UNIV_IBUF_DEBUG switched on !!!!!!!!!";
-#endif
-
 	ib::info() << "Compressed tables use zlib " ZLIB_VERSION
 #ifdef UNIV_ZIP_DEBUG
 	      " with validation"
@@ -1234,14 +1229,6 @@ dberr_t srv_start(bool create_new_db)
 	}
 
 	srv_n_file_io_threads = srv_n_read_io_threads + srv_n_write_io_threads;
-
-	if (!srv_read_only_mode) {
-		/* Add the log and ibuf IO threads. */
-		srv_n_file_io_threads += 2;
-	} else {
-		ib::info() << "Disabling background log and ibuf IO write"
-			<< " threads.";
-	}
 
 	ut_a(srv_n_file_io_threads <= SRV_MAX_N_IO_THREADS);
 
@@ -1390,31 +1377,41 @@ dberr_t srv_start(bool create_new_db)
 	if (create_new_db) {
 		ut_ad(!srv_read_only_mode);
 
-		mtr_start(&mtr);
+		mtr.start();
 		ut_ad(fil_system.sys_space->id == 0);
 		compile_time_assert(TRX_SYS_SPACE == 0);
-		compile_time_assert(IBUF_SPACE_ID == 0);
-		ut_a(fsp_header_init(fil_system.sys_space,
-				     uint32_t(sum_of_new_sizes), &mtr)
-		     == DB_SUCCESS);
-
-		ulint ibuf_root = btr_create(
-			DICT_CLUSTERED | DICT_IBUF, fil_system.sys_space,
-			DICT_IBUF_ID_MIN, nullptr, &mtr, &err);
-
-		mtr_commit(&mtr);
-
-		if (ibuf_root == FIL_NULL) {
-			return srv_init_abort(err);
+		err = fsp_header_init(fil_system.sys_space,
+				      uint32_t(sum_of_new_sizes), &mtr);
+		/* Allocate dummy change buffer pages for backward
+		compatibility and to prevent a downgrade. */
+		if (err != DB_SUCCESS) {
+		} else if (buf_block_t *b =
+			   fseg_create(fil_system.sys_space, PAGE_DATA, &mtr,
+				       &err)) {
+			ut_ad(b->page.id()
+			      == page_id_t(0, FSP_IBUF_HEADER_PAGE_NO));
+			b = fseg_alloc_free_page_general(
+				b->page.frame + PAGE_DATA,
+				FSP_IBUF_TREE_ROOT_PAGE_NO, FSP_UP, false,
+				&mtr, &mtr, &err);
+			if (b) {
+				ut_ad(b->page.id() == page_id_t
+				      (0, FSP_IBUF_TREE_ROOT_PAGE_NO));
+				mtr.set_modified(*b);
+				fsp_init_file_page(fil_system.sys_space, b,
+						   &mtr);
+			} else {
+				ut_ad(err != DB_SUCCESS);
+			}
 		}
-
-		ut_ad(ibuf_root == IBUF_TREE_ROOT_PAGE_NO);
-
 		/* To maintain backward compatibility we create only
 		the first rollback segment before the double write buffer.
 		All the remaining rollback segments will be created later,
 		after the double write buffer has been created. */
-		err = trx_sys_create_sys_pages(&mtr);
+		if (err == DB_SUCCESS) {
+			err = trx_sys_create_sys_pages(&mtr);
+		}
+		mtr.commit();
 
 		if (err != DB_SUCCESS) {
 			return(srv_init_abort(err));
@@ -1691,8 +1688,7 @@ dberr_t srv_start(bool create_new_db)
 			/* Bitmap page types will be reset in
 			buf_dblwr_check_block() without redo logging. */
 			block = buf_page_get(
-				page_id_t(IBUF_SPACE_ID,
-					  FSP_IBUF_HEADER_PAGE_NO),
+				page_id_t(0, FSP_IBUF_HEADER_PAGE_NO),
 				0, RW_X_LATCH, &mtr);
 			if (UNIV_UNLIKELY(!block)) {
 			corrupted_old_page:
@@ -1846,13 +1842,6 @@ skip_monitors:
 				      trx_sys.get_max_trx_id());
 	}
 
-	if (srv_force_recovery == 0) {
-		/* In the change buffer we may have even bigger tablespace
-		id's, because we may have dropped those tablespaces, but
-		the buffered records have not been cleaned yet. */
-		ibuf_update_max_tablespace_id();
-	}
-
 	if (!srv_read_only_mode) {
 		if (create_new_db) {
 			srv_buffer_pool_load_at_startup = FALSE;
@@ -1907,10 +1896,6 @@ void innodb_preshutdown()
     return;
   if (!srv_fast_shutdown && srv_operation == SRV_OPERATION_NORMAL)
   {
-    /* Because a slow shutdown must empty the change buffer, we had
-    better prevent any further changes from being buffered. */
-    innodb_change_buffering= 0;
-
     if (trx_sys.is_initialised())
       while (trx_sys.any_active_transactions())
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -1976,8 +1961,6 @@ void innodb_shutdown()
 	      || srv_force_recovery >= SRV_FORCE_NO_TRX_UNDO);
 	ut_ad(lock_sys.is_initialised() || !srv_was_started);
 	ut_ad(log_sys.is_initialised() || !srv_was_started);
-	ut_ad(ibuf.index || !srv_was_started
-	      || srv_force_recovery >= SRV_FORCE_NO_DDL_UNDO);
 
 	dict_stats_deinit();
 
@@ -1998,7 +1981,6 @@ void innodb_shutdown()
 		btr_search_disable();
 	}
 #endif /* BTR_CUR_HASH_ADAPT */
-	ibuf_close();
 	log_sys.close();
 	purge_sys.close();
 	trx_sys.close();

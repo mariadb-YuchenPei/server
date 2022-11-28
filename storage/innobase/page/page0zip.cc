@@ -463,8 +463,7 @@ page_zip_get_n_prev_extern(
 	ut_ad(page_is_leaf(page));
 	ut_ad(page_is_comp(page));
 	ut_ad(dict_table_is_comp(index->table));
-	ut_ad(dict_index_is_clust(index));
-	ut_ad(!dict_index_is_ibuf(index));
+	ut_ad(index->is_primary());
 
 	heap_no = rec_get_heap_no_new(rec);
 	ut_ad(heap_no >= PAGE_HEAP_NO_USER_LOW);
@@ -1282,7 +1281,7 @@ page_zip_compress(
 	ut_ad(page_simple_validate_new((page_t*) page));
 	ut_ad(page_zip_simple_validate(page_zip));
 	ut_ad(dict_table_is_comp(index->table));
-	ut_ad(!dict_index_is_ibuf(index));
+	ut_ad(!index->is_ibuf());
 
 	MEM_CHECK_DEFINED(page, srv_page_size);
 
@@ -4398,7 +4397,7 @@ page_zip_reorganize(
 	ut_ad(mtr->memo_contains_flagged(block, MTR_MEMO_PAGE_X_FIX));
 	ut_ad(block->page.zip.data);
 	ut_ad(page_is_comp(page));
-	ut_ad(!dict_index_is_ibuf(index));
+	ut_ad(!index->is_ibuf());
 	ut_ad(!index->table->is_temporary());
 	/* Note that page_zip_validate(page_zip, page, index) may fail here. */
 	MEM_CHECK_DEFINED(page, srv_page_size);
@@ -4505,7 +4504,7 @@ page_zip_copy_recs(
 
 	ut_ad(mtr->memo_contains_flagged(block, MTR_MEMO_PAGE_X_FIX));
 	ut_ad(mtr->memo_contains_page_flagged(src, MTR_MEMO_PAGE_X_FIX));
-	ut_ad(!dict_index_is_ibuf(index));
+	ut_ad(!index->is_ibuf());
 	ut_ad(!index->table->is_temporary());
 #ifdef UNIV_ZIP_DEBUG
 	/* The B-tree operations that call this function may set

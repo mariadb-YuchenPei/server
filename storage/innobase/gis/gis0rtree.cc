@@ -34,7 +34,6 @@ Created 2013/03/27 Allen Lai and Jimmy Yang
 #include "btr0pcur.h"
 #include "rem0cmp.h"
 #include "lock0lock.h"
-#include "ibuf0ibuf.h"
 #include "trx0undo.h"
 #include "srv0mon.h"
 #include "gis0geo.h"
@@ -570,7 +569,6 @@ rtr_adjust_upper_level(
 	/* Create a memory heap where the data tuple is stored */
 	heap = mem_heap_create(1024);
 
-	cursor.thr = sea_cur->thr;
 	cursor.page_cur.index = sea_cur->index();
 	cursor.page_cur.block = block;
 
@@ -669,7 +667,7 @@ rtr_adjust_upper_level(
 	if (next_page_no == FIL_NULL) {
 	} else if (buf_block_t*	next_block =
 		   btr_block_get(*sea_cur->index(), next_page_no, RW_X_LATCH,
-				 false, mtr, &err)) {
+				 mtr, &err)) {
 		if (UNIV_UNLIKELY(memcmp_aligned<4>(next_block->page.frame
 						    + FIL_PAGE_PREV,
 						    block->page.frame
@@ -690,11 +688,6 @@ rtr_adjust_upper_level(
 
 /*************************************************************//**
 Moves record list to another page for rtree splitting.
-
-IMPORTANT: The caller will have to update IBUF_BITMAP_FREE
-if new_block is a compressed leaf page in a secondary index.
-This has to be done either within the same mini-transaction,
-or by invoking ibuf_reset_free_bits() before mtr_commit().
 
 @return error code
 @retval DB_FAIL on ROW_FORMAT=COMPRESSED compression failure */
@@ -731,8 +724,7 @@ rtr_split_page_move_rec_list(
 	ulint			max_to_move	= 0;
 	rtr_rec_move_t*		rec_move	= NULL;
 
-	ut_ad(!dict_index_is_ibuf(index));
-	ut_ad(dict_index_is_spatial(index));
+	ut_ad(index->is_spatial());
 
 	rec_offs_init(offsets_);
 
@@ -1179,13 +1171,6 @@ after_insert:
 	/* If the new res insert fail, we need to do another split
 	 again. */
 	if (!rec) {
-		/* We play safe and reset the free bits for new_page */
-		if (!dict_index_is_clust(cursor->index())
-		    && !cursor->index()->table->is_temporary()) {
-			ibuf_reset_free_bits(new_block);
-			ibuf_reset_free_bits(block);
-		}
-
 		/* We need to clean the parent path here and search father
 		node later, otherwise, it's possible that find a wrong
 		parent. */

@@ -56,12 +56,8 @@ is acceptable for the program to die with a clear assert failure. */
 #define BTR_MAX_LEVELS		100
 
 #define BTR_LATCH_MODE_WITHOUT_FLAGS(latch_mode)		\
-	btr_latch_mode((latch_mode) & ~(BTR_INSERT	\
-				| BTR_DELETE_MARK		\
-				| BTR_RTREE_UNDO_INS		\
+	btr_latch_mode((latch_mode) & ~(BTR_RTREE_UNDO_INS	\
 				| BTR_RTREE_DELETE_MARK		\
-				| BTR_DELETE			\
-				| BTR_IGNORE_SEC_UNIQUE		\
 				| BTR_ALREADY_S_LATCHED		\
 				| BTR_LATCH_FOR_INSERT		\
 				| BTR_LATCH_FOR_DELETE))
@@ -86,12 +82,11 @@ ATTRIBUTE_COLD void btr_decryption_failed(const dict_index_t &index);
 @param[in]	index	index tree
 @param[in]	page	page number
 @param[in]	mode	latch mode
-@param[in]	merge	whether change buffer merge should be attempted
 @param[in,out]	mtr	mini-transaction
 @param[out]	err	error code
 @return block */
 buf_block_t *btr_block_get(const dict_index_t &index,
-                           uint32_t page, ulint mode, bool merge,
+                           uint32_t page, ulint mode,
                            mtr_t *mtr, dberr_t *err= nullptr);
 
 /**************************************************************//**
@@ -242,15 +237,7 @@ btr_root_raise_and_insert(
 	mtr_t*		mtr,	/*!< in: mtr */
 	dberr_t*	err)	/*!< out: error code */
 	MY_ATTRIBUTE((warn_unused_result));
-/*************************************************************//**
-Reorganizes an index page.
-
-IMPORTANT: On success, the caller will have to update IBUF_BITMAP_FREE
-if this is a compressed leaf page in a secondary index. This has to
-be done either within the same mini-transaction, or by invoking
-ibuf_reset_free_bits() before mtr_commit(). On uncompressed pages,
-IBUF_BITMAP_FREE is unaffected by reorganization.
-
+/** Reorganize an index page.
 @param cursor  page cursor
 @param mtr     mini-transaction
 @return error code
@@ -451,15 +438,8 @@ btr_root_block_get(
 					or RW_X_LATCH */
 	mtr_t*			mtr,	/*!< in: mtr */
 	dberr_t*		err);	/*!< out: error code */
-/*************************************************************//**
-Reorganizes an index page.
 
-IMPORTANT: On success, the caller will have to update IBUF_BITMAP_FREE
-if this is a compressed leaf page in a secondary index. This has to
-be done either within the same mini-transaction, or by invoking
-ibuf_reset_free_bits() before mtr_commit(). On uncompressed pages,
-IBUF_BITMAP_FREE is unaffected by reorganization.
-
+/** Reorganize an index page.
 @return error code
 @retval DB_FAIL if reorganizing a ROW_FORMAT=COMPRESSED page failed */
 dberr_t btr_page_reorganize_block(

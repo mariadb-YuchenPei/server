@@ -4768,7 +4768,6 @@ wait_table_again:
 		}
 
 	} else if (dtuple_get_n_fields(search_tuple) > 0) {
-		pcur->btr_cur.thr = thr;
 		pcur->old_rec = nullptr;
 
 		if (dict_index_is_spatial(index)) {

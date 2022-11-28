@@ -833,7 +833,7 @@ cmp_rec_rec(
 		ulint	prtype;
 		bool	descending;
 
-		if (UNIV_UNLIKELY(dict_index_is_ibuf(index))) {
+		if (index->is_ibuf()) {
 			/* This is for the insert buffer B-tree. */
 			mtype = DATA_BINARY;
 			prtype = 0;

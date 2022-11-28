@@ -1184,12 +1184,8 @@ public:
 	/** @return whether instant ALTER TABLE is in effect */
 	inline bool is_instant() const;
 
-	/** @return whether the index is the primary key index
-	(not the clustered index of the change buffer) */
-	bool is_primary() const
-	{
-		return DICT_CLUSTERED == (type & (DICT_CLUSTERED | DICT_IBUF));
-	}
+	/** @return whether the index is the primary key index */
+	bool is_primary() const { return is_clust(); }
 
 	/** @return whether this is a generated clustered index */
 	bool is_gen_clust() const { return type == DICT_CLUSTERED; }
@@ -1207,7 +1203,7 @@ public:
 	bool is_ibuf() const { return UNIV_UNLIKELY(type & DICT_IBUF); }
 
 	/** @return whether this index requires locking */
-	bool has_locking() const { return !is_ibuf(); }
+	static constexpr bool has_locking() { return true; }
 
 	/** @return whether this is a normal B-tree index
         (not the change buffer, not SPATIAL or FULLTEXT) */

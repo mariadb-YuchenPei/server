@@ -34,7 +34,6 @@ Created 2014/01/16 Jimmy Yang
 #include "btr0pcur.h"
 #include "rem0cmp.h"
 #include "lock0lock.h"
-#include "ibuf0ibuf.h"
 #include "trx0trx.h"
 #include "srv0mon.h"
 #include "que0que.h"
@@ -278,6 +277,7 @@ rtr_pcur_getnext_from_path(
 				rtr_info->path, next_page_no, path_ssn,
 				level, 0, NULL, 0);
 
+#if 0 // FIXME: fix this
 			if (!srv_read_only_mode
 			    && mode != PAGE_CUR_RTREE_INSERT
 			    && mode != PAGE_CUR_RTREE_LOCATE) {
@@ -288,6 +288,7 @@ rtr_pcur_getnext_from_path(
 					index,
 					rtr_info->thr);
 			}
+#endif
 			new_split = true;
 #if defined(UNIV_GIS_DEBUG)
 			fprintf(stderr,
@@ -538,12 +539,13 @@ rtr_pcur_open(
 
 	btr_cursor->rtr_info = rtr_create_rtr_info(false, false,
 						   btr_cursor, index);
-
+#if 0 // FIXME
 	/* Purge will SX lock the tree instead of take Page Locks */
 	if (btr_cursor->thr) {
 		btr_cursor->rtr_info->need_page_lock = true;
 		btr_cursor->rtr_info->thr = btr_cursor->thr;
 	}
+#endif
 
 	if ((latch_mode & 8) && index->lock.have_u_not_x()) {
 		index->lock.u_x_upgrade(SRW_LOCK_CALL);
@@ -1762,7 +1764,7 @@ rtr_cur_search_with_match(
 							level, page_no, block,
 							rec, 0);
 					}
-
+#if 0 // FIXME: provide rtr_info->thr
 					if (!srv_read_only_mode
 					    && (rtr_info->need_page_lock
 						|| !is_loc)) {
@@ -1777,6 +1779,7 @@ rtr_cur_search_with_match(
 							index,
 							rtr_info->thr);
 					}
+#endif
 				} else {
 					ut_ad(orig_mode
 					      != PAGE_CUR_RTREE_LOCATE);

@@ -170,15 +170,12 @@ every XDES_DESCRIBED_PER_PAGE pages in every tablespace. */
 #define FSP_FIRST_INODE_PAGE_NO		2U	/*!< in every tablespace */
 				/* The following pages exist
 				in the system tablespace (space 0). */
-#define FSP_IBUF_HEADER_PAGE_NO		3U	/*!< insert buffer
+#define FSP_IBUF_HEADER_PAGE_NO		3U	/*!< former insert buffer
 						header page, in
 						tablespace 0 */
-#define FSP_IBUF_TREE_ROOT_PAGE_NO	4U	/*!< insert buffer
+#define FSP_IBUF_TREE_ROOT_PAGE_NO	4U	/*!< former insert buffer
 						B-tree root page in
 						tablespace 0 */
-				/* The ibuf tree root page number in
-				tablespace 0; its fseg inode is on the page
-				number FSP_FIRST_INODE_PAGE_NO */
 #define FSP_TRX_SYS_PAGE_NO		5U	/*!< transaction
 						system header, in
 						tablespace 0 */

@@ -420,7 +420,7 @@ dberr_t dict_boot()
 
 	mtr.commit();
 
-	err = ibuf_init_at_db_start();
+	err = ibuf_cleanup();
 
 	if (err == DB_SUCCESS || srv_force_recovery >= SRV_FORCE_NO_DDL_UNDO) {
 		err = DB_SUCCESS;
